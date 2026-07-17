@@ -3,25 +3,19 @@ import sys
 import types
 
 os.environ.setdefault("TELEGRAM_TOKEN", "dummy")
-os.environ.setdefault("GEMINI_API_KEY", "dummy")
+os.environ.setdefault("GROQ_API_KEY", "dummy")
 os.environ["ALLOWED_USERNAMES"] = "alice,bob"
 os.environ["ALLOWED_USER_IDS"] = "100,200"
 
-# Stub google.generativeai to prevent real API calls at import time
-google_stub = types.ModuleType("google")
-google_stub.__path__ = []
-sys.modules["google"] = google_stub
+# Stub groq to prevent real API calls at import time
+groq_stub = types.ModuleType("groq")
 
-google_genai_stub = types.ModuleType("google.generativeai")
-
-class _FakeGenerativeModel:
-    def __init__(self, *args, **kwargs):
+class _FakeGroqClient:
+    def __init__(self, **kwargs):
         pass
 
-google_genai_stub.configure = lambda **kwargs: None
-google_genai_stub.GenerativeModel = _FakeGenerativeModel
-sys.modules["google.generativeai"] = google_genai_stub
-google_stub.generativeai = google_genai_stub
+groq_stub.Groq = _FakeGroqClient
+sys.modules["groq"] = groq_stub
 
 import importlib
 bot = importlib.import_module("bot")
