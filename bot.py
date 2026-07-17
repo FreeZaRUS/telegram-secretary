@@ -1,10 +1,10 @@
 import os
-import anthropic
+import google.generativeai as genai
 from telegram import Update
 from telegram.ext import Application, MessageHandler, CommandHandler, filters, ContextTypes
 
 TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
-CLAUDE_API_KEY = os.environ["CLAUDE_API_KEY"]
+GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
 
 ALLOWED_USERNAMES = set(
     u.strip().lower()
@@ -17,10 +17,11 @@ ALLOWED_USER_IDS = set(
     if i.strip()
 )
 
-client_ai = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
-
-SYSTEM_PROMPT = """Ты — вежливый и организованный личный секретарь пользователя.
-Отвечай кратко, по делу, дружелюбным тоном."""
+genai.configure(api_key=GEMINI_API_KEY)
+gemini_model = genai.GenerativeModel(
+    "gemini-2.0-flash",
+    system_instruction="Ты — вежливый и организованный личный секретарь пользователя.\nОтвечай кратко, по делу, дружелюбным тоном.",
+)
 
 user_histories = {}
 
@@ -45,16 +46,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_id not in user_histories:
         user_histories[user_id] = []
 
+    history = [
+        {"role": "user" if m["role"] == "user" else "model", "parts": [m["content"]]}
+        for m in user_histories[user_id]
+    ]
+
+    chat = gemini_model.start_chat(history=history)
+    response = chat.send_message(user_text)
+    reply_text = response.text
+
     user_histories[user_id].append({"role": "user", "content": user_text})
-
-    response = client_ai.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=1000,
-        system=SYSTEM_PROMPT,
-        messages=user_histories[user_id],
-    )
-
-    reply_text = response.content[0].text
     user_histories[user_id].append({"role": "assistant", "content": reply_text})
 
     if len(user_histories[user_id]) > 20:
