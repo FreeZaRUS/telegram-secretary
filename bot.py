@@ -1,10 +1,10 @@
 import os
-from groq import Groq
+from openai import OpenAI
 from telegram import Update
 from telegram.ext import Application, MessageHandler, CommandHandler, filters, ContextTypes
 
 TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
-GROQ_API_KEY = os.environ["GROQ_API_KEY"]
+OPENROUTER_API_KEY = os.environ["OPENROUTER_API_KEY"]
 
 ALLOWED_USERNAMES = set(
     u.strip().lower()
@@ -17,7 +17,10 @@ ALLOWED_USER_IDS = set(
     if i.strip()
 )
 
-client_ai = Groq(api_key=GROQ_API_KEY)
+client_ai = OpenAI(
+    api_key=OPENROUTER_API_KEY,
+    base_url="https://openrouter.ai/api/v1",
+)
 
 SYSTEM_PROMPT = "Ты — вежливый и организованный личный секретарь пользователя.\nОтвечай кратко, по делу, дружелюбным тоном."
 
@@ -47,7 +50,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_histories[user_id].append({"role": "user", "content": user_text})
 
     response = client_ai.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="deepseek/deepseek-chat:free",
         max_tokens=1000,
         messages=[{"role": "system", "content": SYSTEM_PROMPT}] + user_histories[user_id],
     )
