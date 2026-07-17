@@ -1,0 +1,74 @@
+import os
+import anthropic
+from telegram import Update
+from telegram.ext import Application, MessageHandler, CommandHandler, filters, ContextTypes
+
+TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
+CLAUDE_API_KEY = os.environ["CLAUDE_API_KEY"]
+
+ALLOWED_USERNAMES = set(
+    u.strip().lower()
+    for u in os.environ.get("ALLOWED_USERNAMES", "").split(",")
+    if u.strip()
+)
+ALLOWED_USER_IDS = set(
+    int(i.strip())
+    for i in os.environ.get("ALLOWED_USER_IDS", "").split(",")
+    if i.strip()
+)
+
+client_ai = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
+
+SYSTEM_PROMPT = """Ты — вежливый и организованный личный секретарь пользователя.
+Отвечай кратко, по делу, дружелюбным тоном."""
+
+user_histories = {}
+
+
+def is_allowed(update: Update) -> bool:
+    user = update.effective_user
+    username = (user.username or "").lower()
+    return username in ALLOWED_USERNAMES or user.id in ALLOWED_USER_IDS
+
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Привет! Я секретарь.")
+
+
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_allowed(update):
+        return
+
+    user_id = update.effective_user.id
+    user_text = update.message.text
+
+    if user_id not in user_histories:
+        user_histories[user_id] = []
+
+    user_histories[user_id].append({"role": "user", "content": user_text})
+
+    response = client_ai.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=1000,
+        system=SYSTEM_PROMPT,
+        messages=user_histories[user_id],
+    )
+
+    reply_text = response.content[0].text
+    user_histories[user_id].append({"role": "assistant", "content": reply_text})
+
+    if len(user_histories[user_id]) > 20:
+        user_histories[user_id] = user_histories[user_id][-20:]
+
+    await update.message.reply_text(reply_text)
+
+
+def main():
+    app = Application.builder().token(TELEGRAM_TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    app.run_polling()
+
+
+if __name__ == "__main__":
+    main()
