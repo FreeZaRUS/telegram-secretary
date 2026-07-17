@@ -28,6 +28,8 @@ user_histories = {}
 
 
 def is_allowed(update: Update) -> bool:
+    if "*" in ALLOWED_USERNAMES:
+        return True
     user = update.effective_user
     username = (user.username or "").lower()
     return username in ALLOWED_USERNAMES or user.id in ALLOWED_USER_IDS
