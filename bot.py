@@ -56,7 +56,9 @@ async def call_ai(messages: list) -> str:
                     max_tokens=1000,
                     messages=messages,
                 )
-                return response.choices[0].message.content
+                if response.choices and response.choices[0].message.content:
+                    return response.choices[0].message.content
+                continue
             except RateLimitError:
                 if attempt == 0:
                     await asyncio.sleep(15)
