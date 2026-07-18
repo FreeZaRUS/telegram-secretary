@@ -72,8 +72,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_allowed(update):
         return
 
+    message = update.effective_message
+    if not message or not message.text:
+        return
+
     user_id = update.effective_user.id
-    user_text = update.message.text
+    user_text = message.text
 
     if user_id not in user_histories:
         user_histories[user_id] = []
@@ -88,14 +92,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(user_histories[user_id]) > 20:
         user_histories[user_id] = user_histories[user_id][-20:]
 
-    await update.message.reply_text(reply_text)
+    await message.reply_text(reply_text)
 
 
 def main():
     app = Application.builder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    app.run_polling()
+    app.add_handler(MessageHandler(filters.UpdateType.BUSINESS_MESSAGE, handle_message))
+    app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
 if __name__ == "__main__":
