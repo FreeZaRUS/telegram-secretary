@@ -52,7 +52,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_histories[user_id].append({"role": "user", "content": user_text})
 
     response = client_ai.chat.completions.create(
-        model="deepseek/deepseek-chat:free",
+        model="meta-llama/llama-3.3-70b-instruct:free",
         max_tokens=1000,
         messages=[{"role": "system", "content": SYSTEM_PROMPT}] + user_histories[user_id],
     )
