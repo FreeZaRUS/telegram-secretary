@@ -14,7 +14,15 @@ class _FakeOpenAIClient:
     def __init__(self, **kwargs):
         pass
 
+class _FakeRateLimitError(Exception):
+    pass
+
+class _FakeNotFoundError(Exception):
+    pass
+
 openai_stub.OpenAI = _FakeOpenAIClient
+openai_stub.RateLimitError = _FakeRateLimitError
+openai_stub.NotFoundError = _FakeNotFoundError
 sys.modules["openai"] = openai_stub
 
 import importlib

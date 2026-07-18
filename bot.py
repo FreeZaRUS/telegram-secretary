@@ -1,5 +1,6 @@
+import asyncio
 import os
-from openai import OpenAI
+from openai import OpenAI, RateLimitError, NotFoundError
 from telegram import Update
 from telegram.ext import Application, MessageHandler, CommandHandler, filters, ContextTypes
 
@@ -24,6 +25,12 @@ client_ai = OpenAI(
 
 SYSTEM_PROMPT = "Ты — вежливый и организованный личный секретарь пользователя.\nОтвечай кратко, по делу, дружелюбным тоном."
 
+# Primary model, fallback used when primary is rate-limited or unavailable
+MODELS = [
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "mistralai/mistral-7b-instruct:free",
+]
+
 user_histories = {}
 
 
@@ -39,6 +46,25 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Привет! Я секретарь.")
 
 
+async def call_ai(messages: list) -> str:
+    for model in MODELS:
+        for attempt in range(2):
+            try:
+                response = client_ai.chat.completions.create(
+                    model=model,
+                    max_tokens=1000,
+                    messages=messages,
+                )
+                return response.choices[0].message.content
+            except RateLimitError:
+                if attempt == 0:
+                    await asyncio.sleep(15)
+                continue
+            except NotFoundError:
+                break  # try next model
+    return "Сервис временно недоступен, попробуйте через минуту."
+
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_allowed(update):
         return
@@ -51,13 +77,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_histories[user_id].append({"role": "user", "content": user_text})
 
-    response = client_ai.chat.completions.create(
-        model="google/gemma-2-9b-it:free",
-        max_tokens=1000,
-        messages=[{"role": "system", "content": SYSTEM_PROMPT}] + user_histories[user_id],
-    )
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}] + user_histories[user_id]
+    reply_text = await call_ai(messages)
 
-    reply_text = response.choices[0].message.content
     user_histories[user_id].append({"role": "assistant", "content": reply_text})
 
     if len(user_histories[user_id]) > 20:
