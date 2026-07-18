@@ -1,5 +1,6 @@
 import asyncio
 import os
+import random
 from openai import OpenAI, RateLimitError, NotFoundError
 from telegram import Update
 from telegram.ext import Application, MessageHandler, CommandHandler, filters, ContextTypes
@@ -42,6 +43,9 @@ MODELS = [
 
 user_histories = {}
 
+# Typing speed: chars per second with ±20% random variation
+CHARS_PER_SECOND = 60
+
 
 def is_allowed(update: Update) -> bool:
     if "*" in ALLOWED_USERNAMES:
@@ -76,6 +80,17 @@ async def call_ai(messages: list) -> str:
     return "Сервис временно недоступен, попробуйте через минуту."
 
 
+async def simulate_typing(context, chat_id: int, total_seconds: float) -> None:
+    """Send typing action repeatedly for total_seconds duration."""
+    elapsed = 0.0
+    while elapsed < total_seconds:
+        await context.bot.send_chat_action(chat_id=chat_id, action="typing")
+        # Telegram typing indicator lasts 5s; refresh every 4s
+        step = min(4.0, total_seconds - elapsed)
+        await asyncio.sleep(step)
+        elapsed += step
+
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_allowed(update):
         return
@@ -92,8 +107,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_histories[user_id].append({"role": "user", "content": user_text})
 
+    # Show typing while waiting for AI
+    await context.bot.send_chat_action(chat_id=message.chat_id, action="typing")
+
     messages = [{"role": "system", "content": SYSTEM_PROMPT}] + user_histories[user_id]
     reply_text = await call_ai(messages)
+
+    # Calculate realistic typing delay based on response length (±20% random)
+    speed = CHARS_PER_SECOND * random.uniform(0.8, 1.2)
+    typing_seconds = len(reply_text) / speed
+
+    # Keep showing typing indicator until delay is done
+    await simulate_typing(context, message.chat_id, typing_seconds)
 
     user_histories[user_id].append({"role": "assistant", "content": reply_text})
 
