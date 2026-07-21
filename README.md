@@ -75,6 +75,8 @@ pip install -r requirements.txt
 |---|---|---|
 | `TELEGRAM_TOKEN` | ✅ | Токен бота от [@BotFather](https://t.me/BotFather) |
 | `OPENROUTER_API_KEY` | ✅ | Ключ от [openrouter.ai](https://openrouter.ai/keys) |
+| `UPSTASH_REDIS_REST_URL` | ✅ | URL базы из [console.upstash.com](https://console.upstash.com) |
+| `UPSTASH_REDIS_REST_TOKEN` | ✅ | Token базы из [console.upstash.com](https://console.upstash.com) |
 | `ALLOWED_USERNAMES` | — | Telegram username через запятую (или `*` для всех) |
 | `ALLOWED_USER_IDS` | — | Telegram ID через запятую |
 
@@ -104,6 +106,17 @@ railway up --detach --service <имя-сервиса>
 В Railway Dashboard → сервис → Variables добавьте `TELEGRAM_TOKEN`, `OPENROUTER_API_KEY`, `ALLOWED_USERNAMES`, `ALLOWED_USER_IDS`.
 
 Тип сервиса: **Worker** (не Web Service). В `Procfile` уже прописан нужный запуск.
+
+## Upstash Redis (история диалогов)
+
+История диалогов хранится в Upstash Redis и переживает рестарты Railway.
+
+1. Зарегистрируйся на [upstash.com](https://upstash.com) (бесплатно, без карты)
+2. Создай базу: **Create Database** → регион ближайший → тип **Regional**
+3. Скопируй `UPSTASH_REDIS_REST_URL` и `UPSTASH_REDIS_REST_TOKEN` из вкладки **REST API**
+4. Добавь оба значения в Railway Variables
+
+Бесплатный план: 10 000 команд/день, 256 MB — для одного бота хватит с запасом.
 
 ## Telegram Business (автоматизация чатов)
 

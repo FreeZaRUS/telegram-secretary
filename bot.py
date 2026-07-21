@@ -1,10 +1,12 @@
 import asyncio
+import json
 import os
 import random
 import tomllib
 from openai import OpenAI, RateLimitError, NotFoundError
 from telegram import Update
 from telegram.ext import Application, MessageHandler, CommandHandler, filters, ContextTypes
+from upstash_redis.asyncio import Redis
 
 with open("config.toml", "rb") as _f:
     _config = tomllib.load(_f)
@@ -28,11 +30,25 @@ client_ai = OpenAI(
     base_url="https://openrouter.ai/api/v1",
 )
 
+redis = Redis(
+    url=os.environ["UPSTASH_REDIS_REST_URL"],
+    token=os.environ["UPSTASH_REDIS_REST_TOKEN"],
+)
+
 SYSTEM_PROMPT = _config["prompt"]["system"].strip()
 MODELS = _config["models"]["fallback"]
 CHARS_PER_SECOND = _config["bot"]["chars_per_second"]
 
-user_histories = {}
+MAX_HISTORY = 40
+
+
+async def get_history(user_id: int) -> list:
+    data = await redis.get(f"history:{user_id}")
+    return json.loads(data) if data else []
+
+
+async def save_history(user_id: int, history: list) -> None:
+    await redis.set(f"history:{user_id}", json.dumps(history))
 
 
 def is_allowed(update: Update) -> bool:
@@ -90,28 +106,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_text = message.text
 
-    if user_id not in user_histories:
-        user_histories[user_id] = []
+    history = await get_history(user_id)
+    history.append({"role": "user", "content": user_text})
 
-    user_histories[user_id].append({"role": "user", "content": user_text})
-
-    # Show typing while waiting for AI
     await context.bot.send_chat_action(chat_id=message.chat_id, action="typing")
 
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}] + user_histories[user_id]
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}] + history
     reply_text = await call_ai(messages)
 
-    # Calculate realistic typing delay based on response length (±20% random)
     speed = CHARS_PER_SECOND * random.uniform(0.8, 1.2)
     typing_seconds = len(reply_text) / speed
-
-    # Keep showing typing indicator until delay is done
     await simulate_typing(context, message.chat_id, typing_seconds)
 
-    user_histories[user_id].append({"role": "assistant", "content": reply_text})
-
-    if len(user_histories[user_id]) > 20:
-        user_histories[user_id] = user_histories[user_id][-20:]
+    history.append({"role": "assistant", "content": reply_text})
+    if len(history) > MAX_HISTORY:
+        history = history[-MAX_HISTORY:]
+    await save_history(user_id, history)
 
     await message.reply_text(reply_text)
 

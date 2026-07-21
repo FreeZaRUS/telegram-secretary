@@ -4,6 +4,8 @@ import types
 
 os.environ.setdefault("TELEGRAM_TOKEN", "dummy")
 os.environ.setdefault("OPENROUTER_API_KEY", "dummy")
+os.environ.setdefault("UPSTASH_REDIS_REST_URL", "https://dummy.upstash.io")
+os.environ.setdefault("UPSTASH_REDIS_REST_TOKEN", "dummy")
 os.environ["ALLOWED_USERNAMES"] = "alice,bob"
 os.environ["ALLOWED_USER_IDS"] = "100,200"
 
@@ -24,6 +26,19 @@ openai_stub.OpenAI = _FakeOpenAIClient
 openai_stub.RateLimitError = _FakeRateLimitError
 openai_stub.NotFoundError = _FakeNotFoundError
 sys.modules["openai"] = openai_stub
+
+# Stub upstash_redis to prevent real network calls at import time
+upstash_stub = types.ModuleType("upstash_redis")
+upstash_asyncio_stub = types.ModuleType("upstash_redis.asyncio")
+
+class _FakeRedis:
+    def __init__(self, **kwargs):
+        pass
+
+upstash_asyncio_stub.Redis = _FakeRedis
+upstash_stub.asyncio = upstash_asyncio_stub
+sys.modules["upstash_redis"] = upstash_stub
+sys.modules["upstash_redis.asyncio"] = upstash_asyncio_stub
 
 import importlib
 bot = importlib.import_module("bot")
