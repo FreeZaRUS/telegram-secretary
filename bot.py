@@ -84,12 +84,14 @@ async def call_ai(messages: list) -> str:
     return "Сервис временно недоступен, попробуйте через минуту."
 
 
-async def simulate_typing(context, chat_id: int, total_seconds: float) -> None:
-    """Send typing action repeatedly for total_seconds duration."""
+async def simulate_typing(context, chat_id: int, total_seconds: float, business_connection_id: str | None = None) -> None:
     elapsed = 0.0
     while elapsed < total_seconds:
-        await context.bot.send_chat_action(chat_id=chat_id, action="typing")
-        # Telegram typing indicator lasts 5s; refresh every 4s
+        await context.bot.send_chat_action(
+            chat_id=chat_id,
+            action="typing",
+            business_connection_id=business_connection_id,
+        )
         step = min(4.0, total_seconds - elapsed)
         await asyncio.sleep(step)
         elapsed += step
@@ -105,18 +107,23 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = update.effective_user.id
     user_text = message.text
+    business_connection_id = getattr(message, "business_connection_id", None)
 
     history = await get_history(user_id)
     history.append({"role": "user", "content": user_text})
 
-    await context.bot.send_chat_action(chat_id=message.chat_id, action="typing")
+    await context.bot.send_chat_action(
+        chat_id=message.chat_id,
+        action="typing",
+        business_connection_id=business_connection_id,
+    )
 
     messages = [{"role": "system", "content": SYSTEM_PROMPT}] + history
     reply_text = await call_ai(messages)
 
     speed = CHARS_PER_SECOND * random.uniform(0.8, 1.2)
     typing_seconds = len(reply_text) / speed
-    await simulate_typing(context, message.chat_id, typing_seconds)
+    await simulate_typing(context, message.chat_id, typing_seconds, business_connection_id)
 
     history.append({"role": "assistant", "content": reply_text})
     if len(history) > MAX_HISTORY:
