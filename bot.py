@@ -1,9 +1,13 @@
 import asyncio
 import os
 import random
+import tomllib
 from openai import OpenAI, RateLimitError, NotFoundError
 from telegram import Update
 from telegram.ext import Application, MessageHandler, CommandHandler, filters, ContextTypes
+
+with open("config.toml", "rb") as _f:
+    _config = tomllib.load(_f)
 
 TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
 OPENROUTER_API_KEY = os.environ["OPENROUTER_API_KEY"]
@@ -24,27 +28,11 @@ client_ai = OpenAI(
     base_url="https://openrouter.ai/api/v1",
 )
 
-SYSTEM_PROMPT = (
-    "Ты отвечаешь от имени Senior Android-разработчика с 10-летним опытом. "
-    "Ты в лёгком пассивном поиске работы — не торопишься, выбираешь осознанно, "
-    "готов рассмотреть интересные предложения но не бегаешь за ними. "
-    "Пиши кратко, уверенно и профессионально. "
-    "Если спрашивают про опыт — упоминай Android (Kotlin, Jetpack Compose, архитектуры MVVM/MVI, работу с REST/GraphQL, CI/CD). "
-    "Если предлагают вакансию — вежливо уточняй стек, условия и формат работы перед тем как давать ответ. "
-    "Не соглашайся сразу, не отказывай грубо — держи баланс заинтересованного но разборчивого специалиста."
-)
-
-# Primary model, fallback used when primary is rate-limited or unavailable
-MODELS = [
-    "nvidia/nemotron-3-ultra-550b-a55b:free",
-    "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
-    "tencent/hy3:free",
-]
+SYSTEM_PROMPT = _config["prompt"]["system"].strip()
+MODELS = _config["models"]["fallback"]
+CHARS_PER_SECOND = _config["bot"]["chars_per_second"]
 
 user_histories = {}
-
-# Typing speed: chars per second with ±20% random variation
-CHARS_PER_SECOND = 60
 
 
 def is_allowed(update: Update) -> bool:

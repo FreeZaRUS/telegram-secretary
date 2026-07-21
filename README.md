@@ -117,27 +117,39 @@ railway up --detach --service <имя-сервиса>
 pytest tests/ -v
 ```
 
+## Конфигурация (`config.toml`)
+
+Все настройки, не являющиеся секретами, хранятся в `config.toml`:
+
+```toml
+[bot]
+chars_per_second = 60          # скорость имитации набора текста
+
+[models]
+fallback = [                   # модели OpenRouter в порядке приоритета
+    "nvidia/nemotron-3-ultra-550b-a55b:free",
+    ...
+]
+
+[prompt]
+system = """
+Ты отвечаешь от имени Senior Android-разработчика...
+"""
+```
+
+Чтобы изменить промт или модели — редактируйте `config.toml` и передеплойте. Секреты (`TELEGRAM_TOKEN`, `OPENROUTER_API_KEY`) остаются в переменных окружения.
+
+Список актуальных бесплатных моделей: [openrouter.ai/models](https://openrouter.ai/models?supported_parameters=free)
+
 ## Структура проекта
 
 ```
 telegram-secretary/
 ├── bot.py              # Основной код бота
+├── config.toml         # Промт, модели, настройки
 ├── Procfile            # Railway: worker: python bot.py
 ├── requirements.txt    # Зависимости
 ├── pyproject.toml      # Настройки pytest
 └── tests/
     └── test_bot.py     # Юнит-тесты (5 тестов)
-```
-
-## Модели
-
-Используются бесплатные модели OpenRouter. Список доступных моделей может меняться — актуальные можно проверить через [openrouter.ai/models](https://openrouter.ai/models?order=newest&supported_parameters=free).
-
-Текущий fallback-список в `bot.py`:
-```python
-MODELS = [
-    "nvidia/nemotron-3-ultra-550b-a55b:free",
-    "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
-    "tencent/hy3:free",
-]
 ```
