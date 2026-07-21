@@ -38,8 +38,7 @@ redis = Redis(
 SYSTEM_PROMPT = _config["prompt"]["system"].strip()
 MODELS = _config["models"]["fallback"]
 CHARS_PER_SECOND = _config["bot"]["chars_per_second"]
-
-MAX_HISTORY = 40
+MAX_HISTORY = _config["bot"]["max_history"]
 
 
 async def get_history(user_id: int) -> list:
