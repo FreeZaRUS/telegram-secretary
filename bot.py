@@ -43,12 +43,12 @@ MAX_HISTORY = 40
 
 
 async def get_history(user_id: int) -> list:
-    data = await redis.get(f"history:{user_id}")
+    data = await redis.get(f"tg-secretary:history:{user_id}")
     return json.loads(data) if data else []
 
 
 async def save_history(user_id: int, history: list) -> None:
-    await redis.set(f"history:{user_id}", json.dumps(history))
+    await redis.set(f"tg-secretary:history:{user_id}", json.dumps(history))
 
 
 def is_allowed(update: Update) -> bool:
