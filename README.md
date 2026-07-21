@@ -7,7 +7,7 @@
 - Отвечает от имени Senior Android-разработчика в пассивном поиске работы
 - Поддерживает Telegram Business (автоматизация чатов)
 - Имитирует набор текста с реалистичной задержкой (60 симв/сек ±20%)
-- Помнит историю диалога (последние 20 сообщений на пользователя)
+- Помнит историю диалога (последние 40 сообщений на пользователя, хранится в Redis)
 - Фильтрует доступ по username или Telegram ID (или разрешает всем через `*`)
 - Цепочка fallback-моделей с retry при rate limit
 
@@ -54,6 +54,7 @@ graph TD
     Dev[Разработчик\nлокальная машина] -->|railway up| RW[Railway Worker\nProcfile: python bot.py]
     RW -->|long polling| TG[Telegram API]
     RW -->|HTTP| OR[OpenRouter API\nоpen-source LLM]
+    RW -->|REST| RD[Upstash Redis\nистория диалогов]
     TG -->|Updates| RW
 ```
 
@@ -103,7 +104,7 @@ railway up --detach
 railway up --detach --service <имя-сервиса>
 ```
 
-В Railway Dashboard → сервис → Variables добавьте `TELEGRAM_TOKEN`, `OPENROUTER_API_KEY`, `ALLOWED_USERNAMES`, `ALLOWED_USER_IDS`.
+В Railway Dashboard → сервис → Variables добавьте все переменные из таблицы выше.
 
 Тип сервиса: **Worker** (не Web Service). В `Procfile` уже прописан нужный запуск.
 
