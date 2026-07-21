@@ -139,7 +139,16 @@ system = """
 
 Чтобы изменить промт или модели — редактируйте `config.toml` и передеплойте. Секреты (`TELEGRAM_TOKEN`, `OPENROUTER_API_KEY`) остаются в переменных окружения.
 
-Список актуальных бесплатных моделей: [openrouter.ai/models](https://openrouter.ai/models?supported_parameters=free)
+## Модели
+
+Используются бесплатные модели OpenRouter. Список доступных моделей может меняться — актуальные можно проверить через [openrouter.ai/models](https://openrouter.ai/models?supported_parameters=free).
+
+Текущий fallback-список в `config.toml`:
+```
+nvidia/nemotron-3-ultra-550b-a55b:free
+nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free
+tencent/hy3:free
+```
 
 ## Структура проекта
 
