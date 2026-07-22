@@ -63,6 +63,13 @@ async def delete_custom_prompt() -> None:
     await redis.delete("tg-secretary:prompt")
 
 
+async def clear_all_history() -> int:
+    keys = await redis.keys("tg-secretary:history:*")
+    if keys:
+        await redis.delete(*keys)
+    return len(keys)
+
+
 def is_allowed(update: Update) -> bool:
     if "*" in ALLOWED_USERNAMES:
         return True
@@ -113,6 +120,14 @@ async def resetprompt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
     await delete_custom_prompt()
     await update.message.reply_text("Промт сброшен до значения из config.toml.")
+
+
+async def clearhistory_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_owner(update):
+        await update.message.reply_text("Нет доступа.")
+        return
+    count = await clear_all_history()
+    await update.message.reply_text(f"История очищена. Удалено диалогов: {count}.")
 
 
 async def call_ai(messages: list) -> str:
@@ -199,6 +214,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("setprompt", setprompt_handler))
     app.add_handler(CommandHandler("resetprompt", resetprompt_handler))
+    app.add_handler(CommandHandler("clearhistory", clearhistory_handler))
     app.add_handler(MessageHandler(filters.Document.ALL, receive_prompt_file))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(MessageHandler(filters.UpdateType.BUSINESS_MESSAGE, handle_message))
