@@ -181,17 +181,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await message.reply_text(reply_text)
 
 
-async def conflict_error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
-    from telegram.error import Conflict
-    import time
-    if isinstance(context.error, Conflict):
-        time.sleep(10)
-        raise SystemExit(1)
-
-
 def main():
     app = Application.builder().token(TELEGRAM_TOKEN).build()
-    app.add_error_handler(conflict_error_handler)
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("setprompt", setprompt_handler))
     app.add_handler(CommandHandler("resetprompt", resetprompt_handler))
