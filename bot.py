@@ -83,11 +83,22 @@ async def setprompt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_owner(update):
         await update.message.reply_text("Нет доступа.")
         return
+    await redis.set(f"tg-secretary:waiting_prompt:{update.effective_user.id}", "1", ex=300)
+    await update.message.reply_text("Отправь .md или .txt файл с новым промтом.")
+
+
+async def receive_prompt_file(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_owner(update):
+        return
+    waiting = await redis.get(f"tg-secretary:waiting_prompt:{update.effective_user.id}")
+    if not waiting:
+        return
     document = update.message.document
     tg_file = await context.bot.get_file(document.file_id)
     content = await tg_file.download_as_bytearray()
     prompt = content.decode("utf-8").strip()
     await save_custom_prompt(prompt)
+    await redis.delete(f"tg-secretary:waiting_prompt:{update.effective_user.id}")
     await update.message.reply_text("Промт обновлён.")
 
 
@@ -176,7 +187,7 @@ def main():
     app = Application.builder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("resetprompt", resetprompt_handler))
-    app.add_handler(MessageHandler(filters.Document.ALL & filters.CaptionRegex(r"^/setprompt"), setprompt_handler))
+    app.add_handler(MessageHandler(filters.Document.ALL, receive_prompt_file))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(MessageHandler(filters.UpdateType.BUSINESS_MESSAGE, handle_message))
     app.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
