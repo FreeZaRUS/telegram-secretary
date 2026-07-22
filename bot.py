@@ -83,8 +83,13 @@ async def setprompt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_owner(update):
         await update.message.reply_text("Нет доступа.")
         return
+    if context.args:
+        prompt = " ".join(context.args).strip()
+        await save_custom_prompt(prompt)
+        await update.message.reply_text("Промт обновлён.")
+        return
     await redis.set(f"tg-secretary:waiting_prompt:{update.effective_user.id}", "1", ex=300)
-    await update.message.reply_text("Отправь .md или .txt файл с новым промтом.")
+    await update.message.reply_text("Отправь новый промт текстом или .md файлом.")
 
 
 async def receive_prompt_file(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -155,6 +160,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_text = message.text
     business_connection_id = getattr(message, "business_connection_id", None)
+
+    if is_owner(update):
+        waiting = await redis.get(f"tg-secretary:waiting_prompt:{user_id}")
+        if waiting:
+            await save_custom_prompt(user_text)
+            await redis.delete(f"tg-secretary:waiting_prompt:{user_id}")
+            await message.reply_text("Промт обновлён.")
+            return
 
     history = await get_history(user_id)
     history.append({"role": "user", "content": user_text})
