@@ -36,7 +36,6 @@ redis = Redis(
     token=os.environ["UPSTASH_REDIS_REST_TOKEN"],
 )
 
-SYSTEM_PROMPT = _config["prompt"]["system"].strip()
 MODELS = _config["models"]["fallback"]
 CHARS_PER_SECOND = _config["bot"]["chars_per_second"]
 MAX_HISTORY = _config["bot"]["max_history"]
@@ -57,10 +56,6 @@ async def get_custom_prompt() -> str | None:
 
 async def save_custom_prompt(text: str) -> None:
     await redis.set("tg-secretary:prompt", text)
-
-
-async def delete_custom_prompt() -> None:
-    await redis.delete("tg-secretary:prompt")
 
 
 async def clear_all_history() -> int:
@@ -116,12 +111,15 @@ async def receive_prompt_file(update: Update, context: ContextTypes.DEFAULT_TYPE
     await update.message.reply_text("Промт обновлён, история очищена.")
 
 
-async def resetprompt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def getprompt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_owner(update):
         await update.message.reply_text("Нет доступа.")
         return
-    await delete_custom_prompt()
-    await update.message.reply_text("Промт сброшен до значения из config.toml.")
+    prompt = await get_custom_prompt()
+    if prompt:
+        await update.message.reply_text(f"Текущий промт:\n\n{prompt}")
+    else:
+        await update.message.reply_text("Промт не задан. Используй /setprompt.")
 
 
 async def clearhistory_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -196,7 +194,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         business_connection_id=business_connection_id,
     )
 
-    prompt = await get_custom_prompt() or SYSTEM_PROMPT
+    prompt = await get_custom_prompt()
+    if not prompt:
+        await message.reply_text("Промт не задан. Используй /setprompt.")
+        return
     messages = [{"role": "system", "content": prompt}] + history
     reply_text = await call_ai(messages)
 
@@ -216,7 +217,7 @@ def main():
     app = Application.builder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("setprompt", setprompt_handler))
-    app.add_handler(CommandHandler("resetprompt", resetprompt_handler))
+    app.add_handler(CommandHandler("getprompt", getprompt_handler))
     app.add_handler(CommandHandler("clearhistory", clearhistory_handler))
     app.add_handler(MessageHandler(filters.Document.ALL, receive_prompt_file))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
