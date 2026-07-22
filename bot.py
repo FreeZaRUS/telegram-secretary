@@ -93,7 +93,8 @@ async def setprompt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.args:
         prompt = " ".join(context.args).strip()
         await save_custom_prompt(prompt)
-        await update.message.reply_text("Промт обновлён.")
+        await clear_all_history()
+        await update.message.reply_text("Промт обновлён, история очищена.")
         return
     await redis.set(f"tg-secretary:waiting_prompt:{update.effective_user.id}", "1", ex=300)
     await update.message.reply_text("Отправь новый промт текстом или .md файлом.")
@@ -110,8 +111,9 @@ async def receive_prompt_file(update: Update, context: ContextTypes.DEFAULT_TYPE
     content = await tg_file.download_as_bytearray()
     prompt = content.decode("utf-8").strip()
     await save_custom_prompt(prompt)
+    await clear_all_history()
     await redis.delete(f"tg-secretary:waiting_prompt:{update.effective_user.id}")
-    await update.message.reply_text("Промт обновлён.")
+    await update.message.reply_text("Промт обновлён, история очищена.")
 
 
 async def resetprompt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -180,8 +182,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         waiting = await redis.get(f"tg-secretary:waiting_prompt:{user_id}")
         if waiting:
             await save_custom_prompt(user_text)
+            await clear_all_history()
             await redis.delete(f"tg-secretary:waiting_prompt:{user_id}")
-            await message.reply_text("Промт обновлён.")
+            await message.reply_text("Промт обновлён, история очищена.")
             return
 
     history = await get_history(user_id)
