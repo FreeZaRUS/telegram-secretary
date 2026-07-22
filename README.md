@@ -154,7 +154,7 @@ pytest tests/ -v
 
 ```toml
 [bot]
-chars_per_second = 60          # скорость имитации набора текста
+chars_per_second = 4           # скорость имитации набора текста
 max_history = 40               # макс. сообщений в истории диалога на пользователя
 
 [models]

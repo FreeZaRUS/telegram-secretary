@@ -171,6 +171,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def main():
+    import time
+    time.sleep(8)  # wait for previous Railway instance to stop before polling
     app = Application.builder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("resetprompt", resetprompt_handler))
