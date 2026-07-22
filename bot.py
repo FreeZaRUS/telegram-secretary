@@ -24,6 +24,7 @@ ALLOWED_USER_IDS = set(
     for i in os.environ.get("ALLOWED_USER_IDS", "").split(",")
     if i.strip()
 )
+OWNER_ID = int(os.environ.get("OWNER_ID", "0"))
 
 client_ai = OpenAI(
     api_key=OPENROUTER_API_KEY,
@@ -50,6 +51,18 @@ async def save_history(user_id: int, history: list) -> None:
     await redis.set(f"tg-secretary:history:{user_id}", json.dumps(history))
 
 
+async def get_custom_prompt() -> str | None:
+    return await redis.get("tg-secretary:prompt")
+
+
+async def save_custom_prompt(text: str) -> None:
+    await redis.set("tg-secretary:prompt", text)
+
+
+async def delete_custom_prompt() -> None:
+    await redis.delete("tg-secretary:prompt")
+
+
 def is_allowed(update: Update) -> bool:
     if "*" in ALLOWED_USERNAMES:
         return True
@@ -58,8 +71,32 @@ def is_allowed(update: Update) -> bool:
     return username in ALLOWED_USERNAMES or user.id in ALLOWED_USER_IDS
 
 
+def is_owner(update: Update) -> bool:
+    return OWNER_ID != 0 and update.effective_user.id == OWNER_ID
+
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Привет! Я секретарь.")
+
+
+async def setprompt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_owner(update):
+        await update.message.reply_text("Нет доступа.")
+        return
+    document = update.message.document
+    tg_file = await context.bot.get_file(document.file_id)
+    content = await tg_file.download_as_bytearray()
+    prompt = content.decode("utf-8").strip()
+    await save_custom_prompt(prompt)
+    await update.message.reply_text("Промт обновлён.")
+
+
+async def resetprompt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_owner(update):
+        await update.message.reply_text("Нет доступа.")
+        return
+    await delete_custom_prompt()
+    await update.message.reply_text("Промт сброшен до значения из config.toml.")
 
 
 async def call_ai(messages: list) -> str:
@@ -117,7 +154,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         business_connection_id=business_connection_id,
     )
 
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}] + history
+    prompt = await get_custom_prompt() or SYSTEM_PROMPT
+    messages = [{"role": "system", "content": prompt}] + history
     reply_text = await call_ai(messages)
 
     speed = CHARS_PER_SECOND * random.uniform(0.8, 1.2)
@@ -135,6 +173,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def main():
     app = Application.builder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("resetprompt", resetprompt_handler))
+    app.add_handler(MessageHandler(filters.Document.ALL & filters.Caption(["/setprompt"]), setprompt_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(MessageHandler(filters.UpdateType.BUSINESS_MESSAGE, handle_message))
     app.run_polling(allowed_updates=Update.ALL_TYPES)

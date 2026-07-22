@@ -6,6 +6,7 @@ os.environ.setdefault("TELEGRAM_TOKEN", "dummy")
 os.environ.setdefault("OPENROUTER_API_KEY", "dummy")
 os.environ.setdefault("UPSTASH_REDIS_REST_URL", "https://dummy.upstash.io")
 os.environ.setdefault("UPSTASH_REDIS_REST_TOKEN", "dummy")
+os.environ.setdefault("OWNER_ID", "42")
 os.environ["ALLOWED_USERNAMES"] = "alice,bob"
 os.environ["ALLOWED_USER_IDS"] = "100,200"
 

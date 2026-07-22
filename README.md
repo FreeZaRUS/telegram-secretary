@@ -80,6 +80,7 @@ pip install -r requirements.txt
 | `UPSTASH_REDIS_REST_TOKEN` | ✅ | Token базы из [console.upstash.com](https://console.upstash.com) |
 | `ALLOWED_USERNAMES` | — | Telegram username через запятую (или `*` для всех) |
 | `ALLOWED_USER_IDS` | — | Telegram ID через запятую |
+| `OWNER_ID` | — | Telegram ID владельца — только он может менять промт через `/setprompt` |
 
 Если оба поля пусты — бот никому не отвечает. Укажите хотя бы одно.
 
@@ -118,6 +119,22 @@ railway up --detach --service <имя-сервиса>
 4. Добавь оба значения в Railway Variables
 
 Бесплатный план: 10 000 команд/день, 256 MB — для одного бота хватит с запасом.
+
+## Управление промтом через Telegram
+
+Промт можно менять прямо из Telegram без редеплоя.
+
+**Установить новый промт:**
+1. Создай `.md` или `.txt` файл с текстом промта
+2. Отправь его боту с подписью `/setprompt`
+3. Бот ответит «Промт обновлён.» и сразу начнёт использовать новый
+
+**Сбросить к промту из `config.toml`:**
+```
+/resetprompt
+```
+
+Обе команды доступны только владельцу (`OWNER_ID`). Узнать свой Telegram ID можно через [@userinfobot](https://t.me/userinfobot).
 
 ## Telegram Business (автоматизация чатов)
 
